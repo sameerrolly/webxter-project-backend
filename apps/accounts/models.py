@@ -63,3 +63,11 @@ class User(AbstractBaseUser, PermissionsMixin):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}".strip() or self.email
+
+    def get_full_name(self):
+        """Django convention — used by admin and third-party packages."""
+        return self.full_name
+
+    def get_short_name(self):
+        """Django convention."""
+        return self.first_name or self.email

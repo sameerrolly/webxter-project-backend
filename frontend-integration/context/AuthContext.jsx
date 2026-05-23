@@ -20,6 +20,8 @@ import {
   register as apiRegister,
   getProfile,
   updateProfile as apiUpdateProfile,
+  uploadAvatar as apiUploadAvatar,
+  removeAvatar as apiRemoveAvatar,
   getCurrentUser,
   isAuthenticated,
 } from "../api/authService";
@@ -178,6 +180,51 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  /**
+   * Upload or replace avatar image.
+   * @param {File} file
+   */
+  const uploadAvatar = useCallback(async (file) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const updatedUser = await apiUploadAvatar(file);
+      setUser(updatedUser);
+      return updatedUser;
+    } catch (err) {
+      const msg =
+        err.response?.data?.detail ||
+        err.response?.data?.avatar?.[0] ||
+        "Avatar upload failed.";
+      setError(msg);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  /**
+   * Remove avatar — deletes file from disk and clears DB field.
+   * Returns updated profile with avatar: null.
+   */
+  const removeAvatar = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const updatedUser = await apiRemoveAvatar();
+      setUser(updatedUser);
+      return updatedUser;
+    } catch (err) {
+      const msg =
+        err.response?.data?.detail ||
+        "Avatar removal failed.";
+      setError(msg);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -188,6 +235,8 @@ export const AuthProvider = ({ children }) => {
         register,
         logout,
         updateProfile,
+        uploadAvatar,
+        removeAvatar,
         isAuthenticated: !!user,
       }}
     >

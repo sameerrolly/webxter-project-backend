@@ -25,6 +25,7 @@ from .views import (
     MeView,
     ProfileView,
     AvatarUploadView,
+    AvatarRemoveView,
     ChangePasswordView,
 )
 
@@ -41,6 +42,7 @@ urlpatterns = [
     # Protected user endpoints
     path("me/",              MeView.as_view(),             name="me"),
     path("profile/",         ProfileView.as_view(),        name="profile"),
-    path("avatar/",          AvatarUploadView.as_view(),   name="avatar"),
+    path("avatar/",          AvatarUploadView.as_view(),   name="avatar_upload"),
+    path("avatar/remove/",   AvatarRemoveView.as_view(),   name="avatar_remove"),
     path("change-password/", ChangePasswordView.as_view(), name="change_password"),
 ]

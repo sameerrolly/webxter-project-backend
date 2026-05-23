@@ -74,11 +74,15 @@ export const getProfile = async () => {
 export const updateProfile = async (data) => {
   const formData = new FormData();
 
+  // Get the currently stored user so we can skip unchanged email
+  const currentUser = getCurrentUser();
+
   Object.entries(data).forEach(([key, value]) => {
     // Skip undefined/null values so we don't accidentally clear fields
-    if (value !== undefined && value !== null) {
-      formData.append(key, value);
-    }
+    if (value === undefined || value === null) return;
+    // Skip email if it hasn't changed — avoids false "already exists" errors
+    if (key === "email" && currentUser && value === currentUser.email) return;
+    formData.append(key, value);
   });
 
   // Do NOT set Content-Type manually — axios must set it automatically
@@ -106,6 +110,21 @@ export const uploadAvatar = async (file) => {
   // Do NOT set Content-Type — axios sets it with the correct boundary
   const response = await api.patch(ENDPOINTS.avatar, formData);
 
+  localStorage.setItem("user", JSON.stringify(response.data));
+  return response.data;
+};
+
+// ---------------------------------------------------------------------------
+// Remove avatar
+// ---------------------------------------------------------------------------
+/**
+ * DELETE /api/v1/auth/avatar/remove/
+ * Removes the avatar from disk and DB. Returns updated profile with avatar: null.
+ *
+ * @returns {Promise<UserProfile>}
+ */
+export const removeAvatar = async () => {
+  const response = await api.delete(ENDPOINTS.avatarRemove);
   localStorage.setItem("user", JSON.stringify(response.data));
   return response.data;
 };

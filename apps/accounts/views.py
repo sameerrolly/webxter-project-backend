@@ -250,13 +250,17 @@ class ProfileView(generics.RetrieveUpdateAPIView):
         return context
 
     def partial_update(self, request, *args, **kwargs):
-        kwargs["partial"] = True
-        # Save via UpdateProfileSerializer
         instance = self.get_object()
-        serializer = UpdateProfileSerializer(instance, data=request.data, partial=True)
+        serializer = UpdateProfileSerializer(
+            instance,
+            data=request.data,
+            partial=True,
+            context={"request": request},   # needed for validate_email self-exclusion
+        )
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        # Return the full profile with absolute avatar URL
+        # Re-fetch from DB to get the latest state, then return full profile
+        instance.refresh_from_db()
         return Response(
             UserProfileSerializer(instance, context={"request": request}).data,
             status=status.HTTP_200_OK,
@@ -270,9 +274,7 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 class AvatarUploadView(APIView):
     """
     PATCH /api/v1/auth/avatar/
-    Protected. Accepts multipart/form-data with a single 'avatar' file field.
-    Saves the image to media/avatars/ and returns the full profile with an
-    absolute avatar URL so the frontend can update its state immediately.
+    Upload or replace the user's avatar image.
 
     Request:  multipart/form-data  { avatar: <image file> }
     Response: full UserProfile JSON with absolute avatar URL
@@ -289,15 +291,55 @@ class AvatarUploadView(APIView):
 
         user = request.user
 
-        # Delete the old avatar file from disk to avoid orphaned files
+        # Delete old file from disk before saving new one
         if user.avatar:
             try:
                 user.avatar.delete(save=False)
             except Exception:
-                pass  # Non-fatal — old file may already be gone
+                pass
 
         user.avatar = request.FILES["avatar"]
         user.save(update_fields=["avatar"])
+        user.refresh_from_db()
+
+        return Response(
+            UserProfileSerializer(user, context={"request": request}).data,
+            status=status.HTTP_200_OK,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Avatar Remove
+# ---------------------------------------------------------------------------
+
+class AvatarRemoveView(APIView):
+    """
+    DELETE /api/v1/auth/avatar/
+    Remove the user's avatar — deletes the file from disk and clears the DB field.
+
+    Response: full UserProfile JSON with avatar: null
+    """
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request):
+        user = request.user
+
+        if not user.avatar:
+            return Response(
+                {"detail": "No avatar to remove."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Delete file from disk
+        try:
+            user.avatar.delete(save=False)
+        except Exception:
+            pass
+
+        # Clear the DB field
+        user.avatar = None
+        user.save(update_fields=["avatar"])
+        user.refresh_from_db()
 
         return Response(
             UserProfileSerializer(user, context={"request": request}).data,

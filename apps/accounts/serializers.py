@@ -120,11 +120,32 @@ class UserProfileSerializer(serializers.ModelSerializer):
 # ---------------------------------------------------------------------------
 
 class UpdateProfileSerializer(serializers.ModelSerializer):
-    """Allows updating profile fields only (not email or password)."""
+    """
+    Allows updating profile fields including email.
+    Email uniqueness check excludes the current user so saving the same
+    email does not trigger a false "already exists" error.
+    """
+    email = serializers.EmailField(required=False)
 
     class Meta:
         model = User
-        fields = ("first_name", "last_name", "bio", "avatar")
+        fields = ("first_name", "last_name", "bio", "avatar", "email")
+        extra_kwargs = {
+            "first_name": {"required": False, "allow_blank": True},
+            "last_name":  {"required": False, "allow_blank": True},
+            "bio":        {"required": False, "allow_blank": True},
+            "avatar":     {"required": False, "allow_null": True},
+        }
+
+    def validate_email(self, value):
+        value = value.lower().strip()
+        # Same email as current user — no change, skip uniqueness check
+        if self.instance and self.instance.email == value:
+            return value
+        # Different email — ensure no other user owns it
+        if User.objects.filter(email=value).exclude(pk=self.instance.pk).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
 
 
 # ---------------------------------------------------------------------------

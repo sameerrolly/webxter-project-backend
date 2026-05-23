@@ -12,9 +12,10 @@ urlpatterns = [
     path("admin/", admin.site.urls),
 
     # API v1
-    path("api/v1/auth/", include("apps.accounts.urls", namespace="accounts")),
-    path("api/v1/projects/", include("apps.projects.urls", namespace="projects")),
-    path("api/v1/orders/", include("apps.orders.urls", namespace="orders")),
+    path("api/v1/auth/",    include("apps.accounts.urls",    namespace="accounts")),
+    path("api/v1/projects/", include("apps.projects.urls",   namespace="projects")),
+    path("api/v1/orders/",   include("apps.orders.urls",     namespace="orders")),
+    path("api/v1/admin/",    include("apps.admin_panel.urls", namespace="admin_panel")),
 ]
 
 # Serve media files in both development and production.
